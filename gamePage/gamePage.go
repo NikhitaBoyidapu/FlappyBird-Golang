@@ -1,9 +1,8 @@
-// game with 3 lives with name
-
 package main
 
 import (
 	"math/rand"
+	"os"
 	"strconv"
 	"time"
 
@@ -37,7 +36,15 @@ func main() {
 	var y_coords int32 = screenHeight/2 - texture.Height/2 - 40
 	var score int = 0
 	var lives int = 3 // Number of lives
-	var name string = "nikhita"
+	var name string
+
+	// Receive name from start page
+	if len(os.Args) > 1 {
+		name = os.Args[1]
+	} else {
+		name = "Player" // Default name if not provided
+	}
+
 	for !rl.WindowShouldClose() && lives > 0 {
 		rl.BeginDrawing()
 

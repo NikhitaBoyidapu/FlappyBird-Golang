@@ -98,21 +98,18 @@ func main() {
 		mousePosition := rl.GetMousePosition()
 		if rl.CheckCollisionPointRec(mousePosition, rl.NewRectangle(float32(buttonX), float32(buttonY), float32(buttonWidth), float32(buttonHeight))) && rl.IsMouseButtonPressed(rl.MouseLeftButton) {
 			// Open the gamePage.go file when the button is clicked, pass the username as an argument
-			if usernameBox.text != "" {
-				cmd := exec.Command("go", "run", "../gamePage/gamePage.go", usernameBox.text)
-				err := cmd.Run()
-				if err != nil {
-					rl.TraceLog(rl.LogError, "Failed to open gamePage.go:", err)
-				}
-			} else {
-				// Username not entered, display a message to the user or take appropriate action
-				rl.TraceLog(rl.LogInfo, "Please enter a username.")
+			cmd := exec.Command("go", "run", "../gamePage/gamePage.go", usernameBox.text)
+			err := cmd.Run()
+			if err != nil {
+				rl.TraceLog(rl.LogError, "Failed to open gamePage.go:", err)
 			}
 		}
 
 		// Update username text box
 		usernameBox.Update()
-
+		if usernameBox.text == "" {
+			usernameBox.text = "user"
+		}
 		// Draw
 		rl.BeginDrawing()
 

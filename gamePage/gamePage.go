@@ -1,12 +1,24 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"strconv"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
+	_ "github.com/go-sql-driver/mysql"
+)
+
+const (
+	DBUsername = "sql5698581"
+	DBPassword = "9JsLU26Zye"
+	DBHost     = "sql5.freemysqlhosting.net"
+	DBPort     = "3306"
+	DBName     = "sql5698581"
 )
 
 type Apple struct {
@@ -17,26 +29,34 @@ type Apple struct {
 	Color  rl.Color
 }
 
+type User struct {
+	ID    int
+	Name  string
+	Lives int
+	Score int
+}
+
 func main() {
 	screenWidth := int32(800)
 	screenHeight := int32(600)
 	rl.InitAudioDevice()
-	eat_noise := rl.LoadSound("../sound/eat.wav")
+	eatNoise := rl.LoadSound("../sound/eat.wav")
 	rl.InitWindow(screenWidth, screenHeight, "FlappyApples")
 	rl.SetTargetFPS(60)
-	bird_down := rl.LoadImage("../assets/bird-down.png")
-	bird_up := rl.LoadImage("../assets/bird-up.png")
-	texture := rl.LoadTextureFromImage(bird_up)
+	birdDown := rl.LoadImage("../assets/bird-down.png")
+	birdUp := rl.LoadImage("../assets/bird-up.png")
+	texture := rl.LoadTextureFromImage(birdUp)
 	rand.Seed(time.Now().UnixNano())
-	var apple_loc int = rand.Intn(450-2+1) - 2
+	var appleLoc int = rand.Intn(450-2+1) - 2
 	Apples := []Apple{}
-	current_apple := Apple{screenWidth, int32(apple_loc), 25, 25, rl.Red}
-	Apples = append(Apples, current_apple)
-	var x_coords int32 = screenWidth/2 - texture.Width/2
-	var y_coords int32 = screenHeight/2 - texture.Height/2 - 40
+	currentApple := Apple{screenWidth, int32(appleLoc), 25, 25, rl.Red}
+	Apples = append(Apples, currentApple)
+	var xCoords int32 = screenWidth/2 - texture.Width/2
+	var yCoords int32 = screenHeight/2 - texture.Height/2 - 40
 	var score int = 0
 	var lives int = 3 // Number of lives
 	var name string
+	saveClicked := false
 
 	// Receive name from start page
 	if len(os.Args) > 1 {
@@ -45,49 +65,65 @@ func main() {
 		name = "Player" // Default name if not provided
 	}
 
+	saveButton := rl.NewRectangle(float32(screenWidth-120), 10, 110, 40)
+
 	for !rl.WindowShouldClose() && lives > 0 {
 		rl.BeginDrawing()
 
-		rl.ClearBackground(rl.RayWhite)
+		rl.ClearBackground(rl.NewColor(255, 228, 196, 255))
 
 		// Draw the bird
-		rl.DrawTexture(texture, x_coords, y_coords, rl.White)
+		rl.DrawTexture(texture, xCoords, yCoords, rl.White)
 		// rl.DrawText("Current Score: "+strconv.Itoa(score), 0, 0, 30, rl.Black)
 		// rl.DrawText("Lives: "+strconv.Itoa(lives), 0, 40, 30, rl.Black)
 		rl.DrawText("Current Score: "+strconv.Itoa(score), 10, 0, 30, rl.Black)
 		rl.DrawText("Lives: "+strconv.Itoa(lives), 310, 0, 30, rl.Black)
 		rl.DrawText("Name: "+name, 450, 0, 30, rl.Black)
-		if rl.IsKeyDown(rl.KeySpace) {
-			texture = rl.LoadTextureFromImage(bird_up)
-			y_coords -= 5
-		} else {
-			texture = rl.LoadTextureFromImage(bird_down)
-			y_coords += 5
+
+		// Draw the save button
+		rl.DrawRectangleRec(saveButton, rl.Green)
+		rl.DrawText("Save", int32(saveButton.X)+25, int32(saveButton.Y)+10, 20, rl.White)
+
+		if rl.CheckCollisionPointRec(rl.GetMousePosition(), saveButton) && rl.IsMouseButtonPressed(rl.MouseLeftButton) {
+			saveClicked = true
 		}
 
-		for io, current_apple := range Apples {
-			rl.DrawRectangle(current_apple.posX, current_apple.posY, current_apple.width, current_apple.height, current_apple.Color)
+		if saveClicked {
+			saveGameDetails(name, score, lives)
+			rl.CloseWindow()
+		}
+
+		if rl.IsKeyDown(rl.KeySpace) {
+			texture = rl.LoadTextureFromImage(birdUp)
+			yCoords -= 5
+		} else {
+			texture = rl.LoadTextureFromImage(birdDown)
+			yCoords += 5
+		}
+
+		for io, currentApple := range Apples {
+			rl.DrawRectangle(currentApple.posX, currentApple.posY, currentApple.width, currentApple.height, currentApple.Color)
 			Apples[io].posX = Apples[io].posX - 5
-			if current_apple.posX < 0 {
+			if currentApple.posX < 0 {
 				Apples[io].posX = 800
 				// Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
-				Apples[io].posY = int32(rand.Intn(460-2+1) - 2) // Adjusted range to 460 to avoid overlap with name text
+				Apples[io].posY = int32(rand.Intn(400-2+1) - 2) // Adjusted range to 460 to avoid overlap with name text
 				score--
 			}
-			if rl.CheckCollisionRecs(rl.NewRectangle(float32(x_coords), float32(y_coords), float32(34), float32(24)), rl.NewRectangle(float32(current_apple.posX), float32(current_apple.posY), float32(current_apple.width), float32(current_apple.height))) {
+			if rl.CheckCollisionRecs(rl.NewRectangle(float32(xCoords), float32(yCoords), float32(34), float32(24)), rl.NewRectangle(float32(currentApple.posX), float32(currentApple.posY), float32(currentApple.width), float32(currentApple.height))) {
 				Apples[io].posX = 800
 				//Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
 				Apples[io].posY = int32(rand.Intn(460-2+1) - 2) // Adjusted range to 460 to avoid overlap with name text
 				score++
-				rl.PlaySound(eat_noise)
+				rl.PlaySound(eatNoise)
 			}
 		}
 
 		// Reduce lives if bird goes below screen
-		if y_coords > 600 {
+		if yCoords > 600 {
 			lives--
 			if lives > 0 {
-				y_coords = screenHeight/2 - texture.Height/2 - 40
+				yCoords = screenHeight/2 - texture.Height/2 - 40
 			}
 			if lives == 0 {
 				rl.UnloadTexture(texture)
@@ -100,7 +136,28 @@ func main() {
 		time.Sleep(50000000)
 	}
 
-	rl.UnloadSound(eat_noise)
+	rl.UnloadSound(eatNoise)
 	rl.UnloadTexture(texture)
-	rl.CloseWindow()
+}
+
+func saveGameDetails(name string, score, lives int) {
+	// Connect to the database
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", DBUsername, DBPassword, DBHost, DBPort, DBName))
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer db.Close()
+
+	// Insert new user record
+	newUser := User{Name: name, Lives: lives, Score: score}
+	err = insertUser(db, newUser)
+	if err != nil {
+		log.Fatal("Failed to insert user:", err)
+	}
+}
+
+// insertUser inserts a new user record into the database.
+func insertUser(db *sql.DB, user User) error {
+	_, err := db.Exec("INSERT INTO User (username, lives, score) VALUES (?, ?, ?)", user.Name, user.Lives, user.Score)
+	return err
 }

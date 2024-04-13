@@ -157,7 +157,22 @@ func saveGameDetails(name string, score, lives int) {
 }
 
 // insertUser inserts a new user record into the database.
+//
+//	func insertUser(db *sql.DB, user User) error {
+//		_, err := db.Exec("INSERT INTO User (username, lives, score) VALUES (?, ?, ?)", user.Name, user.Lives, user.Score)
+//		return err
+//	}
 func insertUser(db *sql.DB, user User) error {
-	_, err := db.Exec("INSERT INTO User (username, lives, score) VALUES (?, ?, ?)", user.Name, user.Lives, user.Score)
+	query := `
+        INSERT INTO User (username, lives, score)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+        lives = VALUES(lives),
+        score = VALUES(score)
+    `
+	_, err := db.Exec(query, user.Name, user.Lives, user.Score)
+	if err != nil {
+		log.Printf("Failed to execute query: %v\n", err)
+	}
 	return err
 }

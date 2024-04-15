@@ -63,8 +63,8 @@ func (t *TextInput) Update() {
 }
 
 func main() {
-	screenWidth := int32(800)
-	screenHeight := int32(600)
+	screenWidth := int32(1200)
+	screenHeight := int32(800)
 
 	rl.InitWindow(screenWidth, screenHeight, "Window with Texture and Button")
 
@@ -91,24 +91,6 @@ func main() {
 	usernameBox := NewTextInput(rl.NewRectangle(float32(buttonX), float32(buttonY-buttonHeight-paddingY), float32(buttonWidth), float32(buttonHeight)), "Username:", "", 15, rl.Black)
 
 	// Main loop
-	// for !rl.WindowShouldClose() {
-	// 	// Check if the button is clicked
-	// 	mousePosition := rl.GetMousePosition()
-	// 	if rl.CheckCollisionPointRec(mousePosition, rl.NewRectangle(float32(buttonX), float32(buttonY), float32(buttonWidth), float32(buttonHeight))) {
-	// 		rl.SetMouseCursor(rl.MouseCursorPointingHand)
-	// 	}
-	// 	if rl.CheckCollisionPointRec(mousePosition, rl.NewRectangle(float32(buttonX), float32(buttonY), float32(buttonWidth), float32(buttonHeight))) && rl.IsMouseButtonPressed(rl.MouseLeftButton) {
-	// 		rl.SetMouseCursor(rl.MouseCursorPointingHand)
-	// 		if usernameBox.text == "" {
-	// 			usernameBox.text = "user"
-	// 		}
-	// 		cmd := exec.Command("go", "run", "../gamePage/gamePage.go", usernameBox.text)
-	// 		err := cmd.Run()
-	// 		if err != nil {
-	// 			rl.TraceLog(rl.LogError, "Failed to open gamePage.go:", err)
-	// 		}
-	// 		usernameBox.text = "" // Reset the username after starting the game
-	// 	}
 	for !rl.WindowShouldClose() {
 		// Check if the button is clicked
 		mousePosition := rl.GetMousePosition()
@@ -133,9 +115,6 @@ func main() {
 			rl.SetMouseCursor(rl.MouseCursorDefault)
 		}
 
-		// Update username text box
-
-		// rl.SetMouseCursor(rl.MouseCursorDefault)
 		// Update username text box
 		usernameBox.Update()
 

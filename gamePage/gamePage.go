@@ -37,8 +37,8 @@ type User struct {
 }
 
 func main() {
-	screenWidth := int32(800)
-	screenHeight := int32(600)
+	screenWidth := int32(1200)
+	screenHeight := int32(800)
 	rl.InitAudioDevice()
 	eatNoise := rl.LoadSound("../sound/eat.wav")
 	rl.InitWindow(screenWidth, screenHeight, "FlappyApples")
@@ -67,6 +67,9 @@ func main() {
 
 	saveButton := rl.NewRectangle(float32(screenWidth-120), 10, 110, 40)
 
+	// Fetch high score from the database
+	highScore := getHighScore()
+
 	for !rl.WindowShouldClose() && lives > 0 {
 		rl.BeginDrawing()
 
@@ -74,11 +77,10 @@ func main() {
 
 		// Draw the bird
 		rl.DrawTexture(texture, xCoords, yCoords, rl.White)
-		// rl.DrawText("Current Score: "+strconv.Itoa(score), 0, 0, 30, rl.Black)
-		// rl.DrawText("Lives: "+strconv.Itoa(lives), 0, 40, 30, rl.Black)
-		rl.DrawText("Current Score: "+strconv.Itoa(score), 10, 0, 30, rl.Black)
-		rl.DrawText("Lives: "+strconv.Itoa(lives), 310, 0, 30, rl.Black)
-		rl.DrawText("Name: "+name, 450, 0, 30, rl.Black)
+		rl.DrawText("Score: "+strconv.Itoa(score), 10, 0, 30, rl.Black)
+		rl.DrawText("Lives: "+strconv.Itoa(lives), 180, 0, 30, rl.Black)
+		rl.DrawText("Name: "+name, 330, 0, 30, rl.Black)
+		rl.DrawText("High Score: "+strconv.Itoa(highScore), 680, 0, 30, rl.Black)
 
 		// Draw the save button
 		rl.DrawRectangleRec(saveButton, rl.Green)
@@ -106,14 +108,12 @@ func main() {
 			Apples[io].posX = Apples[io].posX - 5
 			if currentApple.posX < 0 {
 				Apples[io].posX = 800
-				// Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
-				Apples[io].posY = int32(rand.Intn(580-2+1) - 2) // Adjusted range to 460 to avoid overlap with name text
+				Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
 				score--
 			}
 			if rl.CheckCollisionRecs(rl.NewRectangle(float32(xCoords), float32(yCoords), float32(34), float32(24)), rl.NewRectangle(float32(currentApple.posX), float32(currentApple.posY), float32(currentApple.width), float32(currentApple.height))) {
 				Apples[io].posX = 800
-				//Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
-				Apples[io].posY = int32(rand.Intn(460-2+1) - 2) // Adjusted range to 460 to avoid overlap with name text
+				Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
 				score++
 				rl.PlaySound(eatNoise)
 			}
@@ -156,12 +156,6 @@ func saveGameDetails(name string, score, lives int) {
 	}
 }
 
-// insertUser inserts a new user record into the database.
-//
-//	func insertUser(db *sql.DB, user User) error {
-//		_, err := db.Exec("INSERT INTO User (username, lives, score) VALUES (?, ?, ?)", user.Name, user.Lives, user.Score)
-//		return err
-//	}
 func insertUser(db *sql.DB, user User) error {
 	query := `
         INSERT INTO User (username, lives, score)
@@ -175,4 +169,20 @@ func insertUser(db *sql.DB, user User) error {
 		log.Printf("Failed to execute query: %v\n", err)
 	}
 	return err
+}
+
+func getHighScore() int {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", DBUsername, DBPassword, DBHost, DBPort, DBName))
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer db.Close()
+
+	var highScore int
+	err = db.QueryRow("SELECT MAX(score) FROM User").Scan(&highScore)
+	if err != nil {
+		log.Fatal("Failed to get high score:", err)
+	}
+
+	return highScore
 }

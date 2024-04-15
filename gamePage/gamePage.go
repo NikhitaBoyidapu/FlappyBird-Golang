@@ -107,7 +107,7 @@ func main() {
 			if currentApple.posX < 0 {
 				Apples[io].posX = 800
 				// Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
-				Apples[io].posY = int32(rand.Intn(400-2+1) - 2) // Adjusted range to 460 to avoid overlap with name text
+				Apples[io].posY = int32(rand.Intn(580-2+1) - 2) // Adjusted range to 460 to avoid overlap with name text
 				score--
 			}
 			if rl.CheckCollisionRecs(rl.NewRectangle(float32(xCoords), float32(yCoords), float32(34), float32(24)), rl.NewRectangle(float32(currentApple.posX), float32(currentApple.posY), float32(currentApple.width), float32(currentApple.height))) {

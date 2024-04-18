@@ -12,3 +12,5 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 )
+
+replace leaderboardPage => ../leaderboardPage.go

@@ -1,10 +1,29 @@
+//pending: no rows...warning
+
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"os/exec"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
+	_ "github.com/go-sql-driver/mysql"
 )
+
+const (
+	DBUsername = "sql5698581"
+	DBPassword = "9JsLU26Zye"
+	DBHost     = "sql5.freemysqlhosting.net"
+	DBPort     = "3306"
+	DBName     = "sql5698581"
+)
+
+type User struct {
+	Name  string
+	Lives int
+	Score int
+}
 
 // TextInput represents a text input box.
 type TextInput struct {
@@ -62,11 +81,57 @@ func (t *TextInput) Update() {
 	}
 }
 
-func main() {
-	screenWidth := int32(1200)
-	screenHeight := int32(800)
+var gameNotFoundErrorDisplayed bool
 
-	rl.InitWindow(screenWidth, screenHeight, "Window with Texture and Button")
+func FetchUserDetails(username string) (string, int, int, error) {
+	// Check if the error message has already been displayed
+	if gameNotFoundErrorDisplayed {
+		// Return nil error to indicate that no error occurred
+		return "", 0, 0, nil
+	}
+
+	// Database connection parameters
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", DBUsername, DBPassword, DBHost, DBPort, DBName))
+	if err != nil {
+		fmt.Println("Error opening database connection:", err)
+		return "", 0, 0, err
+	}
+	defer db.Close()
+
+	fmt.Println("Database connection established successfully")
+
+	// Query to fetch user details
+	query := fmt.Sprintf("SELECT username, lives, score FROM User WHERE username='%s'", username)
+	row := db.QueryRow(query)
+
+	// Variables to store user details
+	var name string
+	var lives, score int
+
+	// Scan user details from the database
+	err = row.Scan(&name, &lives, &score)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Set the flag to indicate that the error message has been displayed
+			gameNotFoundErrorDisplayed = true
+			// Return a custom error indicating no game exists
+			fmt.Println("No rows found for username:", username)
+			return "", 0, 0, fmt.Errorf("no game exists")
+		}
+		fmt.Println("Error scanning row:", err)
+		return "", 0, 0, err
+	}
+
+	fmt.Println("User details retrieved successfully:", name, lives, score)
+
+	return name, lives, score, nil
+}
+
+func main() {
+	screenWidth := int32(800)
+	screenHeight := int32(600)
+
+	rl.InitWindow(screenWidth, screenHeight, "Flappy Bird")
 
 	// Load texture
 	texture := rl.LoadTexture("Icon.png")
@@ -81,11 +146,9 @@ func main() {
 	// Button position and size
 	buttonWidth := int32(200)
 	buttonHeight := int32(50)
-	buttonX := screenWidth - buttonWidth - 50 // 50 pixels padding from the right edge
-	buttonY := screenHeight/2 - buttonHeight/2
-
-	// Padding between button and text box
 	paddingY := int32(20)
+	buttonX := screenWidth - buttonWidth - 50 // 50 pixels padding from the right edge
+	buttonY := screenHeight/2 - (buttonHeight+paddingY*2+buttonHeight)/2
 
 	// Username text box
 	usernameBox := NewTextInput(rl.NewRectangle(float32(buttonX), float32(buttonY-buttonHeight-paddingY), float32(buttonWidth), float32(buttonHeight)), "Username:", "", 15, rl.Black)
@@ -97,22 +160,65 @@ func main() {
 		buttonRect := rl.NewRectangle(float32(buttonX), float32(buttonY), float32(buttonWidth), float32(buttonHeight))
 
 		if rl.CheckCollisionPointRec(mousePosition, buttonRect) && rl.IsMouseButtonPressed(rl.MouseLeftButton) {
-			// Launch game
+			// Launch new game
 			if usernameBox.text == "" {
 				usernameBox.text = "user"
 			}
-			cmd := exec.Command("go", "run", "../gamePage/gamePage.go", usernameBox.text)
+			cmd := exec.Command("go", "run", "../gamePage/gamePage.go", usernameBox.text, "3", "0")
 			err := cmd.Run()
 			if err != nil {
 				rl.TraceLog(rl.LogError, "Failed to open gamePage.go:", err)
 			}
 			usernameBox.text = "" // Reset the username after starting the game
-		} else if rl.CheckCollisionPointRec(mousePosition, buttonRect) {
-			// Set hand cursor when mouse is over the button
-			rl.SetMouseCursor(rl.MouseCursorPointingHand)
-		} else {
-			// Reset to default cursor
-			rl.SetMouseCursor(rl.MouseCursorDefault)
+		}
+
+		// Check if the "Continue Game" button is clicked
+		continueButtonRect := rl.NewRectangle(float32(buttonX), float32(buttonY+buttonHeight+paddingY), float32(buttonWidth), float32(buttonHeight))
+		if rl.CheckCollisionPointRec(mousePosition, continueButtonRect) && rl.IsMouseButtonPressed(rl.MouseLeftButton) {
+			// Fetch user details from the database
+			// Launch new game
+			if usernameBox.text == "" {
+				usernameBox.text = "user"
+			}
+			username, lives, score, err := FetchUserDetails(usernameBox.text)
+			if err != nil {
+				rl.TraceLog(rl.LogError, "Failed to fetch user details:", err)
+				continue
+			}
+
+			// Check if the user exists
+			if username == "" || lives == 0 {
+				// Inform the user that the user does not exist
+				// Start a new game
+				cmd := exec.Command("go", "run", "../gamePage/gamePage.go", usernameBox.text, "3", "0")
+				err := cmd.Run()
+				if err != nil {
+					rl.TraceLog(rl.LogError, "Failed to open gamePage.go:", err)
+				}
+			} else {
+				// Check if the user has lives greater than 0
+				if lives > 0 {
+					// Launch the game with user details
+					cmd := exec.Command("go", "run", "../gamePage/gamePage.go", username, fmt.Sprintf("%d", lives), fmt.Sprintf("%d", score))
+					err := cmd.Run()
+					if err != nil {
+						rl.TraceLog(rl.LogError, "Failed to open gamePage.go:", err)
+					}
+				}
+			}
+			usernameBox.text = ""
+		}
+
+		// Check if the "Leadership" button is clicked
+		leadershipButtonRect := rl.NewRectangle(float32(buttonX), float32(buttonY+buttonHeight+paddingY*2+buttonHeight), float32(buttonWidth), float32(buttonHeight))
+		if rl.CheckCollisionPointRec(mousePosition, leadershipButtonRect) && rl.IsMouseButtonPressed(rl.MouseLeftButton) {
+			// Navigate to the leadership page
+			// Implement navigation logic here
+			cmd := exec.Command("go", "run", "../leaderboardPage.go")
+			err := cmd.Run()
+			if err != nil {
+				rl.TraceLog(rl.LogError, "Failed to open leaderboardPage.go:", err)
+			}
 		}
 
 		// Update username text box
@@ -128,12 +234,25 @@ func main() {
 		textureY := screenHeight/2 - texture.Height/2
 		rl.DrawTexture(texture, textureX, textureY, rl.White)
 
-		// Draw button on the right half
+		// Draw buttons
 		rl.DrawRectangle(buttonX, buttonY, buttonWidth, buttonHeight, rl.Green)
-		rl.DrawText("New Game", buttonX+25, buttonY+15, 20, rl.White)
+		rl.DrawText("New Game", buttonX+50, buttonY+15, 20, rl.White)
+
+		rl.DrawRectangle(buttonX, buttonY+buttonHeight+paddingY, buttonWidth, buttonHeight, rl.Green)
+		rl.DrawText("Continue Game", buttonX+25, buttonY+buttonHeight+paddingY+15, 20, rl.White)
+
+		rl.DrawRectangle(buttonX, buttonY+buttonHeight+paddingY*2+buttonHeight, buttonWidth, buttonHeight, rl.Blue)
+		rl.DrawText("Leadership", buttonX+50, buttonY+buttonHeight+paddingY*2+buttonHeight+15, 20, rl.White)
 
 		// Draw username text box
 		usernameBox.Draw()
+
+		// Set cursor appropriately
+		if rl.CheckCollisionPointRec(mousePosition, buttonRect) || rl.CheckCollisionPointRec(mousePosition, continueButtonRect) || rl.CheckCollisionPointRec(mousePosition, leadershipButtonRect) {
+			rl.SetMouseCursor(rl.MouseCursorPointingHand)
+		} else {
+			rl.SetMouseCursor(rl.MouseCursorDefault)
+		}
 
 		rl.EndDrawing()
 	}

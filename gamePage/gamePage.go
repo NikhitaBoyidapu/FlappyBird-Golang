@@ -37,8 +37,8 @@ type User struct {
 }
 
 func main() {
-	screenWidth := int32(1200)
-	screenHeight := int32(800)
+	screenWidth := int32(1000)
+	screenHeight := int32(700)
 	rl.InitAudioDevice()
 	eatNoise := rl.LoadSound("../sound/eat.wav")
 	rl.InitWindow(screenWidth, screenHeight, "FlappyApples")
@@ -47,7 +47,7 @@ func main() {
 	birdUp := rl.LoadImage("../assets/bird-up.png")
 	texture := rl.LoadTextureFromImage(birdUp)
 	rand.Seed(time.Now().UnixNano())
-	var appleLoc int = rand.Intn(450-2+1) - 2
+	var appleLoc int = rand.Intn(660-50+1) + 50
 	Apples := []Apple{}
 	currentApple := Apple{screenWidth, int32(appleLoc), 25, 25, rl.Red}
 	Apples = append(Apples, currentApple)
@@ -61,29 +61,73 @@ func main() {
 	// Receive name from start page
 	if len(os.Args) > 1 {
 		name = os.Args[1]
+		fmt.Println("Name:", name)
+
+		// Convert lives to int
+		_, err := fmt.Sscanf(os.Args[2], "%d", &lives)
+		if err != nil {
+			fmt.Println("Failed to parse lives:", err)
+			return
+		}
+		fmt.Println("Lives:", lives)
+
+		// Convert score to int
+		_, err = fmt.Sscanf(os.Args[3], "%d", &score)
+		if err != nil {
+			fmt.Println("Failed to parse score:", err)
+			return
+		}
+		fmt.Println("Score:", score)
 	} else {
-		name = "Player" // Default name if not provided
+		name = "Player"
+		score = 0
+		lives = 3
 	}
 
 	saveButton := rl.NewRectangle(float32(screenWidth-120), 10, 110, 40)
 
 	// Fetch high score from the database
 	highScore := getHighScore()
-
+	bgTexture := rl.LoadTexture("../assets/bgsky.png")
 	for !rl.WindowShouldClose() && lives > 0 {
 		rl.BeginDrawing()
 
 		rl.ClearBackground(rl.NewColor(255, 228, 196, 255))
+		rl.DrawTexture(bgTexture, 0, 0, rl.White)
+
+		// Draw the labels for score, name, lives, and high score
+		labelY := int32(0)
+		rl.DrawText("Score:       Lives:       Name:       High Score:", 10, labelY, 30, rl.Black)
+		labelY += 40
+
+		// Draw the values for score, name, lives, and high score
+		valueY := int32(40)
+		rl.DrawText(strconv.Itoa(score), 50, valueY, 30, rl.Black)
+		rl.DrawText(strconv.Itoa(lives), 220, valueY, 30, rl.Black)
+		rl.DrawText(name, 360, valueY, 30, rl.Black)
+		rl.DrawText(strconv.Itoa(highScore), 560, valueY, 30, rl.Black)
+		// Draw the apples
+		for io, currentApple := range Apples {
+			rl.DrawRectangle(currentApple.posX, currentApple.posY, currentApple.width, currentApple.height, currentApple.Color)
+			Apples[io].posX = Apples[io].posX - 5
+			if currentApple.posX < 0 {
+				Apples[io].posX = 800
+				Apples[io].posY = int32(rand.Intn(int(screenHeight-40-50)) + 50)
+				score--
+			}
+			if rl.CheckCollisionRecs(rl.NewRectangle(float32(xCoords), float32(yCoords), float32(34), float32(24)), rl.NewRectangle(float32(currentApple.posX), float32(currentApple.posY), float32(currentApple.width), float32(currentApple.height))) {
+				Apples[io].posX = 800
+				Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
+				score++
+				rl.PlaySound(eatNoise)
+			}
+		}
 
 		// Draw the bird
 		rl.DrawTexture(texture, xCoords, yCoords, rl.White)
-		rl.DrawText("Score: "+strconv.Itoa(score), 10, 0, 30, rl.Black)
-		rl.DrawText("Lives: "+strconv.Itoa(lives), 180, 0, 30, rl.Black)
-		rl.DrawText("Name: "+name, 330, 0, 30, rl.Black)
-		rl.DrawText("High Score: "+strconv.Itoa(highScore), 680, 0, 30, rl.Black)
 
 		// Draw the save button
-		rl.DrawRectangleRec(saveButton, rl.Green)
+		rl.DrawRectangleRec(saveButton, rl.Blue)
 		rl.DrawText("Save", int32(saveButton.X)+25, int32(saveButton.Y)+10, 20, rl.White)
 
 		if rl.CheckCollisionPointRec(rl.GetMousePosition(), saveButton) && rl.IsMouseButtonPressed(rl.MouseLeftButton) {
@@ -103,24 +147,8 @@ func main() {
 			yCoords += 5
 		}
 
-		for io, currentApple := range Apples {
-			rl.DrawRectangle(currentApple.posX, currentApple.posY, currentApple.width, currentApple.height, currentApple.Color)
-			Apples[io].posX = Apples[io].posX - 5
-			if currentApple.posX < 0 {
-				Apples[io].posX = 800
-				Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
-				score--
-			}
-			if rl.CheckCollisionRecs(rl.NewRectangle(float32(xCoords), float32(yCoords), float32(34), float32(24)), rl.NewRectangle(float32(currentApple.posX), float32(currentApple.posY), float32(currentApple.width), float32(currentApple.height))) {
-				Apples[io].posX = 800
-				Apples[io].posY = int32(rand.Intn(580-2+1) - 2)
-				score++
-				rl.PlaySound(eatNoise)
-			}
-		}
-
 		// Reduce lives if bird goes below screen
-		if yCoords > 600 {
+		if yCoords > 700 {
 			lives--
 			if lives > 0 {
 				yCoords = screenHeight/2 - texture.Height/2 - 40
